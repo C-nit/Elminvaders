@@ -7,14 +7,17 @@ import Graphics.Element exposing (..)
 import Graphics.Collage exposing (..)
 import Color
 import Window
+import Debug
 
 --corrects 0,0 of coordinate system of collage vs mouseposition
-corrzero : Int -> Int -> Int
-corrzero a size =
-    a - size // 2
+corrZero : (Int, Int) -> (Int, Int) -> (Int, Int)
+corrZero (x, y) (w, h) =
+    (x - w // 2 , y - h //2 )
 ----------------------------------------------Gamestate
 {--}
 type Livelyness = Dead | Alive
+
+type alias Dimensions = (Int, Int)
 
 type alias ExistantAt =
     { x : Int
@@ -42,19 +45,86 @@ type alias DefenderFire = --ExistantAt
 
 type alias GameState =
     { defender : Defender
-    , invader : List Invader
+    , invaders : List Invader
 --    , defenderFire: DefenderFire
 --    , invaderFire : List InvaderFire
+    , dim : Dimensions
     }
 
 --}
 
 --Default Gamestate
-defGameState : GameState
-defGameState =
-    { defender = Defender 0 0 Alive
-    , invader = [ Invader 0 0 Alive]
+gameStart : GameState
+gameStart =
+    { defender = Defender 0 0 Alive   --(Window.height // 2 + 15)
+    , invaders = [ Invader -20 0 Alive]
+    , dim = (0, 0)
     }
+
+--All Signals
+type Update =   DimDelta (Int, Int)
+                | MouseMove (Int, Int)
+                | TimeDelta Time
+                | Click
+                | Tick
+mergedSignals : Signal Update
+mergedSignals =
+    Signal.mergeMany
+        [ Signal.map DimDelta Window.dimensions
+        , Signal.map2 corrZero Mouse.position Window.dimensions |> Signal.map MouseMove
+        , Signal.map TimeDelta (fps 30)
+        , Signal.map (always Click) Mouse.clicks
+        , Signal.map (always Tick) (Time.every Time.second)
+        ]
+
+--current gameState
+gameState : Signal GameState
+gameState =
+    Signal.foldp updateGame gameStart mergedSignals
+
+-- UNFINISHED!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+updateGame : Update -> GameState -> GameState
+updateGame update state =
+    case update of
+        MouseMove (a, _) ->
+            { state
+            | defender <- Defender a (Debug.watch "defy" state.defender.y) state.defender.livelyness
+            }
+        DimDelta _ -> state
+        TimeDelta _ -> state
+        Click -> state
+        Tick -> state
+
+
+
+
+viewDefender : Defender -> Form
+viewDefender defender =
+    defenderXY (Debug.watch "Defender" defender.x) (Debug.watch "Defendery" defender.y)
+
+viewInvader : Invader -> Form
+viewInvader invader =
+    invaderXY invader.x invader.y
+
+viewInvaders : List Invader  -> List Form
+viewInvaders invaders =
+    List.map viewInvader invaders
+
+viewGame : GameState -> Element
+viewGame state =
+    collage
+        (fst state.dim)
+        (snd state.dim)
+        (viewDefender state.defender
+            :: viewInvaders state.invaders)
+
+
+
+
+
+
+main : Signal Element
+main = Signal.map viewGame gameState
 
 ----------------------------------------------Movements
 --moves form to x, y
@@ -76,6 +146,21 @@ movetoY y =
 --floor --roun
 ----------------------------------------------Forms
 
+
+invader : Form
+invader =
+    toForm (image 40 30 "images/Ship.png")
+
+--invader moving to x at y
+defenderXY : Int -> Int -> Form
+defenderXY x y=
+    moveToXY x y invader
+
+invaderXY : Int -> Int -> Form
+invaderXY x y =
+    moveToXY x y invader
+
+{-}
 chugle : Form
 chugle =
     filled Color.red (circle 5.0)
@@ -83,16 +168,20 @@ chugle =
 --Form moving to x y   --mousepos.y is inverted
 chugleXY : (Int, Int) -> (Int, Int) -> Form
 chugleXY (w, h) (x, y) =
-    moveToXY (corrzero x w) -(corrzero y h) chugle
+    moveToXY (corrZero x w) -(corrZero y h) chugle
 
 invader : Form
 invader =
     toForm (image 40 30 "images/Ship.png")
 
 --invader moving to x at y
-invaderX : Int -> (Int, Int) -> Form
-invaderX x (w, h) =
-    moveToXY (corrzero x w) (-h // 2 + 15) invader
+defenderXY : Int -> (Int, Int) -> Form
+defenderXY x (w, h) =
+    moveToXY (corrZero x w) (-h // 2 + 15) invader
+
+invaderXY : Int -> Int -> (Int, Int) -> Form
+invaderXY x y (w, h) =
+    moveToXY (corrZero x w) (corrZero y h) invader
 
 invaderStep : Time -> Form
 invaderStep t =
@@ -102,7 +191,7 @@ invaderStep t =
 formlist : (Int, Int) -> (Int, Int) -> Time -> List Form
 formlist (w, h) (x, y) t =
     [ chugleXY (w, h)  (x, y)
-    , invaderX x (w, h)
+    , defenderXY x (w, h)
     , invaderStep t
     ]
 
@@ -111,8 +200,8 @@ view : (Int, Int) -> (Int, Int) -> Time -> Element   -- { x : Int, y : Int}
 view (w, h) (x, y) t =
     collage w h
     <| formlist (w, h) (x, y) t
+--}
 
-
-main : Signal Element
-main =
-    Signal.map3 view Window.dimensions Mouse.position (fps 30 ) --Keyboard.arrows
+--main : Signal Element
+--main =
+--    Signal.map3 view Window.dimensions Mouse.position (fps 30 ) --Keyboard.arrows
