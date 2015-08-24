@@ -91,7 +91,7 @@ gameState =
     Signal.foldp updateGame gameStart mergedSignals
 
 
-----------------------------------------------Signals + Update
+----------------------------------------------Signals
 
 --corrects 0,0 and y direction of coordinate system of collage vs mouseposition
 corrZero : (Int, Int) -> (Int, Int) -> (Int, Int)
@@ -114,18 +114,39 @@ mergedSignals =
         , Signal.map (always Tick) (Time.every Time.second)
         ]
 
+----------------------------------------------Update
+
+-- could be updated so state.dim would be considered
+inRange : Livelyness -> Int -> Livelyness
+inRange live y =
+    if live == Dead
+        then Dead
+    else if (y < 540 && y > -540)
+        then Alive
+    else Dead
+
+isAlive : DefenderFire -> Bool
+isAlive a =
+    if a.livelyness == Alive
+        then True
+    else False
+
+--buryDef : List DefenderFire -> List DefenderFire
+--buryDef list =
+--    List.filter (isAlive) list
 
 updateDefFire : DefenderFire -> DefenderFire
 updateDefFire fire =
-    DefenderFire fire.x (fire.y + 1) fire.livelyness
+    DefenderFire fire.x (fire.y + 2) (inRange fire.livelyness fire.y)
 
 updateInvFire : InvaderFire -> InvaderFire
 updateInvFire fire =
-    InvaderFire fire.x (fire.y - 1) fire.livelyness
+    InvaderFire fire.x (fire.y - 1) (inRange fire.livelyness fire.y)
 
 newDefFire : List DefenderFire -> Defender -> List DefenderFire
 newDefFire fires player =
     DefenderFire player.x player.y Alive :: fires
+
 -- UNFINISHED!!
 updateGame : Update -> GameState -> GameState
 updateGame update state =
@@ -140,7 +161,7 @@ updateGame update state =
             }
         TimeDelta _ ->
             { state
-            | defenderFires <- List.map updateDefFire state.defenderFires
+            | defenderFires <- List.filter (isAlive) (List.map updateDefFire state.defenderFires)
             , invaderFires <- List.map updateInvFire state.invaderFires
             }
         Click ->
