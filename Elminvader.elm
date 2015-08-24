@@ -114,6 +114,15 @@ mergedSignals =
         , Signal.map (always Tick) (Time.every Time.second)
         ]
 
+
+updateDefFire : DefenderFire -> DefenderFire
+updateDefFire fire =
+    DefenderFire fire.x (fire.y + 1) fire.livelyness
+
+updateInvFire : InvaderFire -> InvaderFire
+updateInvFire fire =
+    InvaderFire fire.x (fire.y - 1) fire.livelyness
+
 -- UNFINISHED!!
 updateGame : Update -> GameState -> GameState
 updateGame update state =
@@ -126,7 +135,11 @@ updateGame update state =
             { state
             | dim <- wh
             }
-        TimeDelta _ -> state
+        TimeDelta _ ->
+            { state
+            | defenderFires <- List.map updateDefFire state.defenderFires
+            , invaderFires <- List.map updateInvFire state.invaderFires
+            }
         Click -> state
         Tick -> state
 
