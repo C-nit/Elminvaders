@@ -123,6 +123,9 @@ updateInvFire : InvaderFire -> InvaderFire
 updateInvFire fire =
     InvaderFire fire.x (fire.y - 1) fire.livelyness
 
+newDefFire : List DefenderFire -> Defender -> List DefenderFire
+newDefFire fires player =
+    DefenderFire player.x player.y Alive :: fires
 -- UNFINISHED!!
 updateGame : Update -> GameState -> GameState
 updateGame update state =
@@ -140,7 +143,10 @@ updateGame update state =
             | defenderFires <- List.map updateDefFire state.defenderFires
             , invaderFires <- List.map updateInvFire state.invaderFires
             }
-        Click -> state
+        Click ->
+            { state
+            | defenderFires <- newDefFire state.defenderFires state.defender
+            }
         Tick -> state
 
 ---------------------------------------------- View functions
