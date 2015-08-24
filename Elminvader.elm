@@ -12,7 +12,7 @@ import Debug
 --corrects 0,0 of coordinate system of collage vs mouseposition
 corrZero : (Int, Int) -> (Int, Int) -> (Int, Int)
 corrZero (x, y) (w, h) =
-    (x - w // 2 , y - h //2 )
+    (x - w // 2 , -y + h //2 )
 ----------------------------------------------Gamestate
 {--}
 type Livelyness = Dead | Alive
@@ -56,12 +56,12 @@ type alias GameState =
 --Default Gamestate
 gameStart : GameState
 gameStart =
-    { defender = Defender 0 0 Alive   --(Window.height // 2 + 15)
+    { defender = Defender 0 -135 Alive   --(Window.height // 2 + 15)
     , invaders = [ Invader -20 0 Alive]
-    , dim = (0, 0)
+    , dim = (400, 300)
     }
 
---All Signals
+--All Signals !! order is of importance, left one
 type Update =   DimDelta (Int, Int)
                 | MouseMove (Int, Int)
                 | TimeDelta Time
@@ -88,9 +88,12 @@ updateGame update state =
     case update of
         MouseMove (a, _) ->
             { state
-            | defender <- Defender a (Debug.watch "defy" state.defender.y) state.defender.livelyness
+            | defender <- Defender a (-(snd state.dim) // 2 + 15) state.defender.livelyness
             }
-        DimDelta _ -> state
+        DimDelta wh ->
+            { state
+            | dim <- wh
+            }
         TimeDelta _ -> state
         Click -> state
         Tick -> state
