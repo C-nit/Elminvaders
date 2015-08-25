@@ -37,35 +37,43 @@ type Livelyness = Dead | Alive
 
 type alias Dimensions = (Int, Int)
 
-type alias ExistantAt =
-    { x : Int
+type alias ExistantAt a =
+    { a
+    | x : Int
     , y : Int
     , livelyness : Livelyness
     }
 
-type alias Defender = --ExistantAt
-    { x : Int
-    , y : Int
-    , livelyness : Livelyness
+createExistantAt : Int -> Int -> Livelyness -> ExistantAt {}
+createExistantAt a b c=
+    { x = a
+    , y = b
+    , livelyness = c
     }
 
-type alias Invader = --ExistantAt
-    { x : Int
-    , y : Int
-    , livelyness : Livelyness
-    }
+type alias Defender = ExistantAt {}
 
-type alias DefenderFire = --ExistantAt
-    { x : Int
-    , y : Int
-    , livelyness : Livelyness
-    }
+createDefender : Int -> Int -> Livelyness -> Defender
+createDefender x y live =
+    createExistantAt x y live
 
-type alias InvaderFire = --ExistantAt
-    { x : Int
-    , y : Int
-    , livelyness : Livelyness
-    }
+type alias Invader = ExistantAt {}
+
+createInvader : Int -> Int -> Livelyness -> Invader
+createInvader x y live =
+    createExistantAt x y live
+
+type alias DefenderFire = ExistantAt {}
+
+createDefenderFire : Int -> Int -> Livelyness -> DefenderFire
+createDefenderFire x y live =
+    createExistantAt x y live
+
+type alias InvaderFire = ExistantAt {}
+
+createInvaderFire : Int -> Int -> Livelyness -> InvaderFire
+createInvaderFire x y live =
+    createExistantAt x y live
 
 type alias GameState =
     { defender : Defender
@@ -78,10 +86,10 @@ type alias GameState =
 --Default Gamestate
 gameStart : GameState
 gameStart =
-    { defender = Defender 0 -135 Alive   --(Window.height // 2 + 15)
-    , invaders = [ Invader -20 60 Alive]
-    , defenderFires = [ DefenderFire 120 0 Dead]
-    , invaderFires = [ InvaderFire 120 40 Dead]
+    { defender = createDefender 0 -135 Alive   --(Window.height // 2 + 15)
+    , invaders = [ createInvader -20 60 Alive]
+    , defenderFires = [ createDefenderFire 120 0 Dead]
+    , invaderFires = [ createInvaderFire 120 40 Dead]
     , dim = (400, 300)
     }
 
@@ -125,27 +133,27 @@ inRange live y =
         then Alive
     else Dead
 
-isAlive : DefenderFire -> Bool
-isAlive a =
-    if a.livelyness == Alive
+isAlive : ExistantAt a -> Bool
+isAlive thing =
+    if thing.livelyness == Alive
         then True
     else False
 
---buryDef : List DefenderFire -> List DefenderFire
---buryDef list =
---    List.filter (isAlive) list
+bury : List (ExistantAt a) -> List (ExistantAt a)
+bury  list =
+    List.filter (isAlive) list
 
 updateDefFire : DefenderFire -> DefenderFire
 updateDefFire fire =
-    DefenderFire fire.x (fire.y + 2) (inRange fire.livelyness fire.y)
+    createDefenderFire fire.x (fire.y + 2) (inRange fire.livelyness fire.y)
 
 updateInvFire : InvaderFire -> InvaderFire
 updateInvFire fire =
-    InvaderFire fire.x (fire.y - 1) (inRange fire.livelyness fire.y)
+    createInvaderFire fire.x (fire.y - 1) (inRange fire.livelyness fire.y)
 
 newDefFire : List DefenderFire -> Defender -> List DefenderFire
 newDefFire fires player =
-    DefenderFire player.x player.y Alive :: fires
+    createDefenderFire player.x player.y Alive :: fires
 
 -- UNFINISHED!!
 updateGame : Update -> GameState -> GameState
@@ -153,7 +161,7 @@ updateGame update state =
     case update of
         MouseMove (a, _) ->
             { state
-            | defender <- Defender a (-(snd state.dim) // 2 + 15) state.defender.livelyness
+            | defender <- createDefender a (-(snd state.dim) // 2 + 15) state.defender.livelyness
             }
         DimDelta wh ->
             { state
