@@ -75,22 +75,26 @@ createInvaderFire : Int -> Int -> Livelyness -> InvaderFire
 createInvaderFire x y live =
     createExistantAt x y live
 
+type Shift = Left | Right
+
 type alias GameState =
     { defender : Defender
     , invaders : List Invader
     , defenderFires: List DefenderFire
     , invaderFires : List InvaderFire
     , dim : Dimensions
+    , shift : Shift
     }
 
 --Default Gamestate
 gameStart : GameState
 gameStart =
     { defender = createDefender 0 -135 Alive   --(Window.height // 2 + 15)
-    , invaders = [ createInvader -20 60 Alive]
+    , invaders = [ createInvader -20 60 Alive, createInvader 30 20 Dead]
     , defenderFires = [ createDefenderFire 120 0 Dead]
-    , invaderFires = [ createInvaderFire 120 40 Dead]
+    , invaderFires = [ createInvaderFire 120 40 Dead, createInvaderFire 220 40 Alive]
     , dim = (400, 300)
+    , shift = Right
     }
 
 --current gameState
@@ -125,11 +129,11 @@ mergedSignals =
 ----------------------------------------------Update
 
 -- could be updated so state.dim would be considered
-inRange : Livelyness -> Int -> Livelyness
-inRange live y =
-    if live == Dead
+inRange : ExistantAt a -> Livelyness
+inRange thing =
+    if thing.livelyness == Dead
         then Dead
-    else if (y < 540 && y > -540)
+    else if (thing.y < 540 && thing.y > -540)
         then Alive
     else Dead
 
@@ -145,15 +149,32 @@ bury  list =
 
 updateDefFire : DefenderFire -> DefenderFire
 updateDefFire fire =
-    createDefenderFire fire.x (fire.y + 2) (inRange fire.livelyness fire.y)
+    createDefenderFire fire.x (fire.y + 2) (inRange fire)
 
 updateInvFire : InvaderFire -> InvaderFire
 updateInvFire fire =
-    createInvaderFire fire.x (fire.y - 1) (inRange fire.livelyness fire.y)
+    createInvaderFire fire.x (fire.y - 1) (inRange fire)
+
+--not ready dir?
+updateInvader : Shift -> Int -> Invader -> Invader
+updateInvader dir speed inv =
+    if dir == Right
+        then createInvader (inv.x + speed) inv.y (inRange inv)
+    else createInvader (inv.x - speed) inv.y (inRange inv)
 
 newDefFire : List DefenderFire -> Defender -> List DefenderFire
 newDefFire fires player =
     createDefenderFire player.x player.y Alive :: fires
+
+updateInvaderTick : Invader -> Invader
+updateInvaderTick inv =
+    createInvader inv.x (inv.y - 5) inv.livelyness
+
+updateShift : Shift -> Shift
+updateShift dir =
+    if dir == Right
+        then Left
+    else Right
 
 -- UNFINISHED!!
 updateGame : Update -> GameState -> GameState
@@ -169,14 +190,19 @@ updateGame update state =
             }
         TimeDelta _ ->
             { state
-            | defenderFires <- List.filter (isAlive) (List.map updateDefFire state.defenderFires)
-            , invaderFires <- List.map updateInvFire state.invaderFires
+            | defenderFires <- bury (List.map updateDefFire state.defenderFires)
+            , invaderFires  <- bury (List.map updateInvFire state.invaderFires)
+            , invaders      <- bury (List.map( updateInvader state.shift 1) state.invaders)
             }
         Click ->
             { state
             | defenderFires <- newDefFire state.defenderFires state.defender
             }
-        Tick -> state
+        Tick ->
+            { state
+            | invaders <- (List.map updateInvaderTick state.invaders)
+            , shift <- updateShift state.shift
+            }
 
 ---------------------------------------------- View functions
 
